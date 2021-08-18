@@ -97,8 +97,8 @@ def submitbets():
             better_config.db_put(query_matches)
     return ("Success")
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
-    # db_syncer.sync_scorers()
+    # app.run(debug=True, port=5000)
+    db_syncer.sync_matches()
     #db_syncer.sync_mastches()
     # while True:
     #     # if x time passed since last timestamp, else pass
