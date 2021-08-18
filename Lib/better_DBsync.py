@@ -71,9 +71,7 @@ class scorers_update():
 
 def sync_mastches():
     url = "https://sofascore.p.rapidapi.com/tournaments/get-matches"
-
     querystring = {"tournamentId": "34","seasonId": "37167","pageIndex": "0"}
-
     response = requests.request("GET", url, headers=better_config.headers, params=querystring).text
     matches_json = json.loads(response)
     for key in matches_json['events']:
@@ -100,11 +98,9 @@ def sync_mastches():
 def sync_standings():
     url = "https://api-football-beta.p.rapidapi.com/standings"
     querystring = {"season": "2020","league": "2"}
-
     response = requests.request("GET", url, headers=better_config.headers, params=querystring).text
     standings_response = json.loads(response)
     standings_json = standings_response['response'][0]['league']['standings']
-    # print(standings_json)
     for group in standings_json:
         for rank in group:
             params = standings_update(group,rank)
@@ -126,10 +122,8 @@ def sync_standings():
 def sync_scorers():
     url = "https://api-football-beta.p.rapidapi.com/players/topscorers"
     querystring = {"season":"2021","league":"2"}
-
     response = requests.request("GET", url, headers=better_config.headers, params=querystring).text
     scorers_json = json.loads(response)
-    key = 0
     for key in scorers_json['response']:
         params = scorers_update(scorers_json,key)
         query = """IF EXISTS (SELECT * FROM dbo.scorers WHERE PID = '{}')

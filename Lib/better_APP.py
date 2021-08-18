@@ -1,11 +1,26 @@
-import pyodbc
 from flask import Flask, request
 import json
 import better_DBsync as db_syncer
-import time
+import datetime
 import better_config
 
 app = Flask(__name__)
+
+class bets_update():
+    def __init__(self,json,key):
+        self.id = None
+        self.type = None
+        self.home = None
+        self.away = None
+        self.outcome = None
+        self.winner = None
+        self.id = key['match']['id']
+        self.type = key['match']['type']
+        self.home = key['match']['home']
+        self.away = key['match']['away']
+        self.outcome = key['match']['outcome']
+        if "winner" in key:
+            self.winner = key['match']['winner']
 
 @app.route('/form_register', methods=['POST'])
 def form_register():
@@ -51,13 +66,39 @@ def pullbets():
 
 @app.route('/submit-bet',methods=['POST'])
 def submitbets():
-
-
-    return 'Form Data Example'
-
+    bets_json = request.get_json()
+    UID = bets_json['parameters']['UID']
+    LID = bets_json['parameters']['LID']
+    if "bets" in bets_json:
+        u_winner = bets_json['bets']['winner']
+        u_goaler = bets_json['bets']['goaler']
+        query_bets = """IF EXISTS (SELECT u_winner FROM dbo.betlog WHERE (UID='{}' AND LID='{}'))
+                              UPDATE betlog
+                              SET u_winner='{}',u_goaler='{}'
+                              WHERE (UID='{}' AND LID='{}')
+                          ELSE
+                              INSERT INTO betlog (UID,LID,m_type,u_winner,u_goaler)
+                              VALUES ('{}','{}','winners','{}','{}')""".format(UID,LID,u_winner,u_goaler,UID,LID,UID,LID,u_winner,u_goaler)
+        better_config.db_put(query_bets)
+    if "matches" in bets_json:
+        for match in bets_json['matches']:
+            params = bets_update(bets_json,match)
+            query_matches = """IF EXISTS (SELECT * FROM dbo.betlog WHERE (UID='{}' AND LID='{}' AND MID='{}'))
+                                          UPDATE betlog
+                                          SET m_type='{}',log_time='{}',m_hscore='{}',m_ascore='{}',m_outcome='{}',m_winner='{}'
+                                          WHERE (UID='{}' AND LID='{}' AND MID='{}')
+                                      ELSE
+                                          INSERT INTO betlog (UID,LID,MID,m_type,log_time,m_hscore,m_ascore,m_outcome,m_winner)
+                                          VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(UID,LID,params.id,params.type,datetime.datetime.now(),
+                                                                                                          params.home,params.away,params.outcome,
+                                                                                                          params.winner,UID,LID,params.id,UID,LID,params.id,
+                                                                                                          params.type,datetime.datetime.now(),params.home,
+                                                                                                          params.away,params.outcome,params.winner)
+            better_config.db_put(query_matches)
+    return ("Success")
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-    db_syncer.sync_scorers()
+    # db_syncer.sync_scorers()
     #db_syncer.sync_mastches()
     # while True:
     #     # if x time passed since last timestamp, else pass
