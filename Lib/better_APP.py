@@ -1,6 +1,5 @@
 from flask import Flask, request
-import json
-import better_DBsync as db_syncer
+import better_DBsync as dbSyncer
 import datetime
 import better_config
 
@@ -85,10 +84,10 @@ def submitbets():
             params = bets_update(bets_json,match)
             query_matches = """IF EXISTS (SELECT * FROM dbo.betlog WHERE (UID='{}' AND LID='{}' AND MID='{}'))
                                           UPDATE betlog
-                                          SET m_type='{}',log_time='{}',m_hscore='{}',m_ascore='{}',m_outcome='{}',m_winner='{}'
+                                          SET m_type='{}',log_time='{}',b_hscore='{}',b_ascore='{}',b_outcome='{}',b_winner='{}'
                                           WHERE (UID='{}' AND LID='{}' AND MID='{}')
                                       ELSE
-                                          INSERT INTO betlog (UID,LID,MID,m_type,log_time,m_hscore,m_ascore,m_outcome,m_winner)
+                                          INSERT INTO betlog (UID,LID,MID,m_type,log_time,b_hscore,b_ascore,b_outcome,b_winner)
                                           VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(UID,LID,params.id,params.type,datetime.datetime.now(),
                                                                                                           params.home,params.away,params.outcome,
                                                                                                           params.winner,UID,LID,params.id,UID,LID,params.id,
@@ -98,7 +97,7 @@ def submitbets():
     return ("Success")
 if __name__ == '__main__':
     # app.run(debug=True, port=5000)
-    db_syncer.sync_matches()
+    dbSyncer.sync_matches()
     #db_syncer.sync_mastches()
     # while True:
     #     # if x time passed since last timestamp, else pass

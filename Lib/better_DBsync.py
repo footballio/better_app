@@ -1,165 +1,151 @@
 import json
 import requests
 import better_config
-import datetime
 
 
-class match_update():
-    def __init__(self,match_json,key):
-        self.match_id = None
-        self.match_type = None
-        self.match_status = None
-        self.match_start = None
-        self.match_homeTID = None
-        self.match_home = None
-        self.match_awayTID = None
-        self.match_away = None
-        self.match_hscore = None
-        self.match_ascore = None
-        self.match_outcome = None
-        self.match_winner = None
-        self.match_id = key['fixture']['id']
-        self.match_type = key['league']['round']
-        self.match_status = key['fixture']['status']['short']
-        self.match_start = key['fixture']['timestamp']
-        self.match_homeTID = key['teams']['home']['id']
-        self.match_home = key['teams']['home']['name']
-        self.match_awayTID = key['teams']['away']['id']
-        self.match_away = key['teams']['away']['name']
-        self.match_hscore = key['score']['fulltime']['home']
-        self.match_ascore = key['score']['fulltime']['away']
-        if self.match_hscore == self.match_ascore:
-            self.match_outcome = 3
-        elif self.match_hscore > self.match_ascore:
-            self.match_outcome = 1
-        elif self.match_hscore < self.match_ascore:
-            self.match_outcome = 2
+class match_update:
+    def __init__(self, key):
+        self.m_id = None
+        self.m_round = None
+        self.m_status = None
+        self.m_time = None
+        self.m_hscore = None
+        self.m_ascore = None
+        self.m_outcome = None
+        self.m_winner = None
+        self.m_id = key['fixture']['id']
+        self.m_round = key['league']['round']
+        self.m_status = key['fixture']['status']['short']
+        self.m_time = key['fixture']['timestamp']
+        self.m_hscore = key['score']['fulltime']['home']
+        self.m_ascore = key['score']['fulltime']['away']
+        if self.m_hscore == self.m_ascore:
+            self.m_outcome = 3
+        elif self.m_hscore > self.m_ascore:
+            self.m_outcome = 1
+        elif self.m_hscore < self.m_ascore:
+            self.m_outcome = 2
         else:
             pass
         if key['teams']['home']['winner']:
-            self.match_winner = 1
+            self.m_winner = 1
         elif key['teams']['away']['winner']:
-            self.match_winner = 2
+            self.m_winner = 2
         else:
-            self.match_winner = None
+            self.m_winner = None
 
-class standings_update():
-    def __init__(self,standings_json,key):
+
+class teams_update:
+    def __init__(self, key):
+        self.t_id = None
+        self.t_name = None
+        self.t_image = None
         self.group_id = None
-        self.group_name = None
-        self.team_rank = None
-        self.team_id = None
-        self.team_points= None
-        self.team_played = None
-        self.team_wins = None
-        self.team_draws = None
-        self.team_loses = None
-        self.team_gf = None
+        self.t_rank = None
+        self.t_points = None
+        self.t_played = None
+        self.t_wins = None
+        self.t_draws = None
+        self.t_loses = None
+        self.t_gd = None
+        self.t_id = key['team']['id']
+        self.t_name = key['team']['name']
+        self.t_image = key['team']['logo']
         self.group_id = key['group']
-        self.team_rank = key['rank']
-        self.team_id = key['team']['id']
-        self.team_name = key['team']['name']
-        self.team_points= key['points']
-        self.team_played = key['all']['played']
-        self.team_wins = key['all']['win']
-        self.team_draws = key['all']['draw']
-        self.team_loses = key['all']['lose']
-        self.team_gf = key['goalsDiff']
+        self.t_rank = key['rank']
+        self.t_points = key['points']
+        self.t_played = key['all']['played']
+        self.t_wins = key['all']['win']
+        self.t_draws = key['all']['draw']
+        self.t_loses = key['all']['lose']
+        self.t_gd = key['goalsDiff']
 
-class scorers_update():
-    def __init__(self,scorers_json,key):
-        self.player_id = None
-        self.player_name = None
-        self.player_team = None
-        self.player_image = None
-        self.player_goals= None
-        self.player_id = key['player']['id']
-        self.player_name = key['player']['name']
-        self.player_team = key['statistics'][0]['team']['id']
-        self.player_image = key['player']['photo']
-        self.player_goals = key['statistics'][0]['goals']['total']
+
+class players_update:
+    def __init__(self, key):
+        self.p_id = None
+        self.p_name = None
+        self.p_team = None
+        self.p_image = None
+        self.p_goals = None
+        self.p_id = key['player']['id']
+        self.p_name = key['player']['name']
+        self.p_team = key['statistics'][0]['team']['id']
+        self.p_image = key['player']['photo']
+        self.p_goals = key['statistics'][0]['goals']['total']
+
 
 def sync_matches():
     url = "https://api-football-beta.p.rapidapi.com/fixtures"
-    querystring = {"season": "2015","league": "2"}
+    querystring = {"season": "2015", "league": "2"}
     response = requests.request("GET", url, headers=better_config.headers, params=querystring).text
     matches_json = json.loads(response)
     for key in matches_json['response']:
-        params = match_update(matches_json,key)
-        if params.match_winner is None:
+        params = match_update(key)
+        if params.m_winner is None:
             query = """IF EXISTS (SELECT * FROM dbo.matches WHERE MID = '{}')
                              UPDATE matches
-                             SET m_type='{}',m_status='{}',m_time='{}',m_home_TID='{}',m_home='{}',m_away_TID='{}',m_away='{}',m_hscore='{}',
-                             m_ascore='{}',m_outcome='{}',m_winner='{}'
+                             SET m_round='{}',m_status='{}',m_time='{}',m_hscore='{}',m_ascore='{}',m_outcome='{}'
                              WHERE MID = '{}'
                          ELSE
-                             INSERT INTO matches (MID,m_type,m_status,m_time,m_home_TID,m_home,m_away_TID,m_away,m_hscore,m_ascore,m_outcome)
-                             VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(params.match_id,params.match_type,params.match_status,
-                                                                                                params.match_start,params.match_homeTID,params.match_home,
-                                                                                                params.match_awayTID,params.match_away,params.match_hscore,
-                                                                                                params.match_ascore,params.match_outcome,params.match_winner,
-                                                                                                params.match_id,params.match_id,params.match_type,
-                                                                                                params.match_status,params.match_start,params.match_homeTID,
-                                                                                                params.match_home, params.match_awayTID,params.match_away,
-                                                                                                params.match_hscore,params.match_ascore,params.match_outcome)
+                             INSERT INTO matches (MID,m_round,m_status,m_time,m_hscore,m_ascore,m_outcome)
+                             VALUES ('{}','{}','{}','{}','{}','{}','{}')""".format(params.m_id, params.m_round, params.m_status, params.m_time,
+                                                                                   params.m_hscore, params.m_ascore, params.m_outcome,
+                                                                                   params.m_id, params.m_id, params.m_round, params.m_status,
+                                                                                   params.m_time, params.m_hscore, params.m_ascore, params.m_outcome)
         else:
             query = """IF EXISTS (SELECT * FROM dbo.matches WHERE MID = '{}')
                                         UPDATE matches
-                                        SET m_type='{}',m_status='{}',m_time='{}',m_home_TID='{}',m_home='{}',m_away_TID='{}',m_away='{}',m_hscore='{}',
-                                        m_ascore='{}',m_outcome='{}',m_winner='{}'
+                                        SET m_round='{}',m_status='{}',m_time='{}',m_hscore='{}',m_ascore='{}',m_outcome='{}',m_winner='{}'
                                         WHERE MID = '{}'
                         ELSE
-                            INSERT INTO matches (MID,m_type,m_status,m_time,m_home_TID,m_home,m_away_TID,m_away,m_hscore,m_ascore,m_outcome,m_winner)
-                            VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(params.match_id,params.match_type,params.match_status,
-                                                                                                    params.match_start,params.match_homeTID,params.match_home,
-                                                                                                    params.match_awayTID,params.match_away,params.match_hscore,
-                                                                                                    params.match_ascore,params.match_outcome,params.match_winner,
-                                                                                                    params.match_id,params.match_id,params.match_type,
-                                                                                                    params.match_status,params.match_start,params.match_homeTID,
-                                                                                                    params.match_home, params.match_awayTID,params.match_away,
-                                                                                                    params.match_hscore,params.match_ascore,params.match_outcome,
-                                                                                                    params.match_winner)
+                            INSERT INTO matches (MID,m_round,m_status,m_time,m_hscore,m_ascore,m_outcome,m_winner)
+                            VALUES ('{}','{}','{}','{}','{}','{}','{}','{}')""".format(params.m_id, params.m_round, params.m_status, params.m_time,
+                                                                                       params.m_hscore, params.m_ascore, params.m_outcome,
+                                                                                       params.m_winner, params.m_id, params.m_id, params.m_round,
+                                                                                       params.m_status, params.m_time, params.m_hscore,
+                                                                                       params.m_ascore, params.m_outcome, params.m_winner)
         better_config.db_put(query)
 
 
-def sync_standings():
+def sync_teams():
     url = "https://api-football-beta.p.rapidapi.com/standings"
-    querystring = {"season": "2020","league": "2"}
+    querystring = {"season": "2020", "league": "2"}
     response = requests.request("GET", url, headers=better_config.headers, params=querystring).text
     standings_response = json.loads(response)
     standings_json = standings_response['response'][0]['league']['standings']
     for group in standings_json:
         for rank in group:
-            params = standings_update(group,rank)
-            query = """IF EXISTS (SELECT * FROM dbo.standings WHERE TID = '{}')
-                              UPDATE standings
+            params = teams_update(rank)
+            query = """IF EXISTS (SELECT * FROM dbo.standings WHERE TID='{}')
+                              UPDATE teams
                               SET t_rank='{}',t_points='{}',t_played='{}',t_wins='{}',t_draws='{}',t_loses='{}',t_goals_diff='{}'
                               WHERE TID = '{}'
                           ELSE
-                              INSERT INTO standings (group_id,t_rank,TID,t_name,t_points,t_played,t_wins,t_draws,t_loses,t_goals_diff)
-                              VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(params.team_id,params.team_rank,params.team_points,
-                                                                                              params.team_played,params.team_wins,params.team_draws,
-                                                                                              params.team_loses,params.team_gf,params.team_id,
-                                                                                              params.group_id[-1],params.team_rank,params.team_id,
-                                                                                              params.team_name,params.team_points,params.team_played,
-                                                                                              params.team_wins,params.team_draws,params.team_loses,
-                                                                                              params.team_gf)
+                              INSERT INTO teams (TID,t_name,group_id,t_rank,t_points,t_played,t_wins,t_draws,t_loses,t_goals_diff)
+                              VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(params.t_id, params.t_rank, params.t_points,
+                                                                                                   params.t_played, params.t_wins, params.t_draws,
+                                                                                                   params.t_loses, params.t_gd, params.t_id,
+                                                                                                   params.t_id, params.t_name, params.group_id[-1],
+                                                                                                   params.t_rank, params.t_points, params.t_played,
+                                                                                                   params.t_wins, params.t_draws, params.t_loses,
+                                                                                                   params.t_gd)
             better_config.db_put(query)
 
-def sync_scorers():
+
+def sync_players():
     url = "https://api-football-beta.p.rapidapi.com/players/topscorers"
-    querystring = {"season":"2021","league":"2"}
+    querystring = {"season": "2021", "league": "2"}
     response = requests.request("GET", url, headers=better_config.headers, params=querystring).text
     scorers_json = json.loads(response)
     for key in scorers_json['response']:
-        params = scorers_update(scorers_json,key)
+        params = players_update(key)
         query = """IF EXISTS (SELECT * FROM dbo.scorers WHERE PID = '{}')
-                        UPDATE scorers
-                        SET Pgoals='{}',Pimage='{}'
+                        UPDATE players
+                        SET p_goals='{}'
                         WHERE PID = '{}'
                     ELSE
-                        INSERT INTO scorers (PID,Pname,Pgoals,Pimage,TID)
-                        VALUES ('{}','{}','{}','{}','{}')""".format(params.player_id,params.player_goals,params.player_image,params.player_id,
-                                                                    params.player_id,params.player_name,params.player_goals,params.player_image,
-                                                                    params.player_team)
+                        INSERT INTO players (PID,p_name,TID,p_goals,p_image)
+                        VALUES ('{}','{}','{}','{}','{}')""".format(params.p_id, params.p_goals, params.p_id, params.p_id, params.p_name,
+                                                                    params.p_team, params.p_goals, params.p_image)
         better_config.db_put(query)
