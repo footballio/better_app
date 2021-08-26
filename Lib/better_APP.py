@@ -8,14 +8,14 @@ app = Flask(__name__)
 
 class bets_update:
     def __init__(self, key):
-        self.id = None
-        self.type = None
+        self.mid = None
+        self.m_round = None
         self.home = None
         self.away = None
         self.outcome = None
         self.winner = None
-        self.id = key['match']['id']
-        self.type = key['match']['type']
+        self.mid = key['match']['id']
+        self.m_round = key['match']['type']
         self.home = key['match']['home']
         self.away = key['match']['away']
         self.outcome = key['match']['outcome']
@@ -61,11 +61,15 @@ def form_login():
 def pullbets():
     uid = request.args['UID']
     lid = request.args['LID']
-    query = """SELECT UID,n_type, m_status, m_hteam, m_ateam, m_hscore, m_ascore, m_outcome, m_winner
-            FROM dbo.betlog
-            WHERE UID='{}', LID='{}'""".format(uid, lid)
-    response = better_config.db_pull_list(query)
-    return response
+    b_query = """SELECT UID, LID, b_winner_TID, b_goaler_PID
+                 FROM dbo.b_betlog
+                 WHERE UID='{}', LID='{}'""".format(uid, lid)
+    m_query = """SELECT UID, m_round, m_status, m_hteam, m_ateam, m_hscore, m_ascore, m_outcome, m_winner
+                 FROM dbo.m_betlog
+                 WHERE UID='{}', LID='{}'""".format(uid, lid)
+    m_response = better_config.db_pull_list(m_query)
+    b_resonse = better_config.db_pull_list(b_query)
+    return "{} \n{}".format(m_response, b_resonse)
 
 
 @app.route('/submit-bet', methods=['POST'])
@@ -76,30 +80,31 @@ def submitbets():
     if "bets" in bets_json:
         u_winner = bets_json['bets']['winner']
         u_goaler = bets_json['bets']['goaler']
-        query_bets = """IF EXISTS (SELECT u_winner FROM dbo.betlog WHERE (UID='{}' AND LID='{}'))
-                              UPDATE betlog
-                              SET u_winner='{}',u_goaler='{}'
+        query_bets = """IF EXISTS (SELECT u_winner FROM dbo.b_betlog WHERE (UID='{}' AND LID='{}'))
+                              UPDATE b_betlog
+                              SET log_time,b_winner_TID='{}',b_goaler_PID='{}'
                               WHERE (UID='{}' AND LID='{}')
-                          ELSE
-                              INSERT INTO betlog (UID,LID,m_type,u_winner,u_goaler)
-                              VALUES ('{}','{}','winners','{}','{}')""".format(uid, lid, u_winner, u_goaler, uid, lid, uid, lid, u_winner, u_goaler)
+                        ELSE
+                              INSERT INTO b_betlog (UID,LID,log_time,u_winner,u_goaler)
+                              VALUES ('{}','{}','{}','{}','{}')""".format(uid, lid, datetime.datetime.now(), u_winner, u_goaler, uid, lid,
+                                                                          uid, lid, datetime.datetime.now(), u_winner, u_goaler)
         better_config.db_put(query_bets)
     if "matches" in bets_json:
         for match in bets_json['matches']:
             params = bets_update(match)
-            query_matches = """IF EXISTS (SELECT * FROM dbo.betlog WHERE (UID='{}' AND LID='{}' AND MID='{}'))
-                                          UPDATE betlog
-                                          SET m_type='{}',log_time='{}',b_hscore='{}',b_ascore='{}',b_outcome='{}',b_winner='{}'
-                                          WHERE (UID='{}' AND LID='{}' AND MID='{}')
-                                      ELSE
-                                          INSERT INTO betlog (UID,LID,MID,m_type,log_time,b_hscore,b_ascore,b_outcome,b_winner)
-                                          VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(uid, lid, params.id, params.type,
-                                                                                                          datetime.datetime.now(), params.home,
-                                                                                                          params.away, params.outcome, params.winner,
-                                                                                                          uid, lid, params.id, uid, lid, params.id,
-                                                                                                          params.type, datetime.datetime.now(),
-                                                                                                          params.home, params.away, params.outcome,
-                                                                                                          params.winner)
+            query_matches = """IF EXISTS (SELECT * FROM dbo.m_betlog WHERE (UID='{}' AND LID='{}' AND MID='{}'))
+                                    UPDATE m_betlog
+                                    SET m_round='{}',log_time='{}',b_hscore='{}',b_ascore='{}',b_outcome='{}',b_winner='{}'
+                                    WHERE (UID='{}' AND LID='{}' AND MID='{}')
+                               ELSE
+                                   INSERT INTO m_betlog (UID,LID,MID,m_round,log_time,b_hscore,b_ascore,b_outcome,b_winner)
+                                   VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(uid, lid, params.mid, params.m_round,
+                                                                                                   datetime.datetime.now(), params.home,
+                                                                                                   params.away, params.outcome, params.winner, uid,
+                                                                                                   lid, params.mid, uid, lid, params.mid,
+                                                                                                   params.m_round, datetime.datetime.now(),
+                                                                                                   params.home, params.away, params.outcome,
+                                                                                                   params.winner)
             better_config.db_put(query_matches)
     return "Success"
 
