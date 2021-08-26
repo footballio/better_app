@@ -9,13 +9,11 @@ app = Flask(__name__)
 class bets_update:
     def __init__(self, key):
         self.mid = None
-        self.m_round = None
         self.home = None
         self.away = None
         self.outcome = None
         self.winner = None
         self.mid = key['match']['id']
-        self.m_round = key['match']['type']
         self.home = key['match']['home']
         self.away = key['match']['away']
         self.outcome = key['match']['outcome']
@@ -23,18 +21,18 @@ class bets_update:
             self.winner = key['match']['winner']
 
 
-@app.route('/form_register', methods=['POST'])
+@app.route('/form-register', methods=['POST'])
 def form_register():
     newusermail = request.args['email']
-    newusername = request.args['username']
+    newname = request.args['name']
     newpassword = request.args['password']
-    existing_mail = better_config.db_pull_list("""SELECT Uname FROM dbo.users""")
+    existing_mail = better_config.db_pull_list("""SELECT u_mail FROM dbo.users""")
     print(existing_mail)
-    if newusername in existing_mail:
-        return "Error. Username already exists"
+    if newname in existing_mail:
+        return "Error. E-Mail already exists"
     else:
         pass
-    query_put = """INSERT INTO dbo.users(u_mail, u_name, u_pass) VALUES ('{}','{}','{}');""".format(newusermail, newusername, newpassword)
+    query_put = """INSERT INTO dbo.users(u_mail, u_name, u_pass) VALUES ('{}','{}','{}');""".format(newusermail, newname, newpassword)
     better_config.db_put(query_put)
     query_userid = """SELECT UID from dbo.users WHERE u_mail='{}'""".format(newusermail)
     user_id = better_config.db_pull_val(query_userid)
@@ -94,24 +92,22 @@ def submitbets():
             params = bets_update(match)
             query_matches = """IF EXISTS (SELECT * FROM dbo.m_betlog WHERE (UID='{}' AND LID='{}' AND MID='{}'))
                                     UPDATE m_betlog
-                                    SET m_round='{}',log_time='{}',b_hscore='{}',b_ascore='{}',b_outcome='{}',b_winner='{}'
+                                    SET log_time='{}',b_hscore='{}',b_ascore='{}',b_outcome='{}',b_winner='{}'
                                     WHERE (UID='{}' AND LID='{}' AND MID='{}')
                                ELSE
-                                   INSERT INTO m_betlog (UID,LID,MID,m_round,log_time,b_hscore,b_ascore,b_outcome,b_winner)
-                                   VALUES ('{}','{}','{}','{}','{}','{}','{}','{}','{}')""".format(uid, lid, params.mid, params.m_round,
-                                                                                                   datetime.datetime.now(), params.home,
-                                                                                                   params.away, params.outcome, params.winner, uid,
-                                                                                                   lid, params.mid, uid, lid, params.mid,
-                                                                                                   params.m_round, datetime.datetime.now(),
+                                   INSERT INTO m_betlog (UID,LID,MID,log_time,b_hscore,b_ascore,b_outcome,b_winner)
+                                   VALUES ('{}','{}','{}','{}','{}','{}','{}','{}')""".format(uid, lid, params.mid,datetime.datetime.now(),
                                                                                                    params.home, params.away, params.outcome,
-                                                                                                   params.winner)
+                                                                                                   params.winner, uid, lid, params.mid, uid, lid,
+                                                                                                   params.mid, datetime.datetime.now(), params.home,
+                                                                                                   params.away, params.outcome, params.winner)
             better_config.db_put(query_matches)
     return "Success"
 
 
 if __name__ == '__main__':
-    # app.run(debug=True, port=5000)
-    dbSyncer.sync_matches()
+    app.run(debug=True, port=5000)
+    #dbSyncer.sync_matches()
     # db_syncer.sync_mastches()
     # while True:
     #     # if x time passed since last timestamp, else pass
