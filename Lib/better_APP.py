@@ -26,17 +26,17 @@ def form_register():
     newusermail = request.args['email']
     newname = request.args['name']
     newpassword = request.args['password']
-    existing_mail = better_config.db_pull_list("""SELECT u_mail FROM dbo.users""")
+    existing_mail = better_config.db_pull_list("SELECT u_mail FROM dbo.users WHERE u_mail = ?", newusermail)
     print(existing_mail)
-    if newname in existing_mail:
+    if newusermail in existing_mail:
         return "Error. E-Mail already exists"
     else:
         pass
-    query_put = """INSERT INTO dbo.users(u_mail, u_name, u_pass) VALUES ('{}','{}','{}');""".format(newusermail, newname, newpassword)
-    better_config.db_put(query_put)
-    query_userid = """SELECT UID from dbo.users WHERE u_mail='{}'""".format(newusermail)
-    user_id = better_config.db_pull_val(query_userid)
-    print(user_id)
+    query_put = "INSERT INTO dbo.users(u_mail, u_name, u_pass) VALUES (?,?,?)"
+    queryusers_params = (newusermail, newname, newpassword)
+    better_config.db_put(query_put, queryusers_params)
+    query_userid = "SELECT UID from dbo.users WHERE u_mail=?"
+    user_id = better_config.db_pull_val(query_userid, newusermail)
     return 'userID = {}'.format(user_id)
 
 
@@ -45,11 +45,11 @@ def form_login():
     if request.method == 'POST':
         mail = request.args['email']
         password = request.args['password']
-        query_validate = """SELECT [u_pass] FROM dbo.users WHERE u_mail='{}'""".format(mail)
-        identity = better_config.db_pull_val(query_validate)
+        query_validate = "SELECT u_pass FROM dbo.users WHERE u_mail=?"
+        identity = better_config.db_pull_val(query_validate, mail)
         if identity == password:
-            query_userid = """SELECT UID from dbo.users WHERE u_mail='{}'""".format(mail)
-            user_id = better_config.db_pull_val(query_userid)
+            query_userid = "SELECT UID from dbo.users WHERE u_mail=?"
+            user_id = better_config.db_pull_val(query_userid, mail)
             return 'userID = {}'.format(user_id)
         else:
             return 'Wrong username / password'
@@ -59,14 +59,11 @@ def form_login():
 def pullbets():
     uid = request.args['UID']
     lid = request.args['LID']
-    b_query = """SELECT UID, LID, b_winner_TID, b_goaler_PID
-                 FROM dbo.b_betlog
-                 WHERE UID='{}', LID='{}'""".format(uid, lid)
-    m_query = """SELECT UID, m_round, m_status, m_hteam, m_ateam, m_hscore, m_ascore, m_outcome, m_winner
-                 FROM dbo.m_betlog
-                 WHERE UID='{}', LID='{}'""".format(uid, lid)
-    m_response = better_config.db_pull_list(m_query)
-    b_resonse = better_config.db_pull_list(b_query)
+    b_query = "SELECT UID, LID, b_winner_TID, b_goaler_PID FROM dbo.b_betlog WHERE UID=?, LID=?"
+    m_query = "SELECT UID, m_round, m_status, m_hteam, m_ateam, m_hscore, m_ascore, m_outcome, m_winner FROM dbo.m_betlog WHERE UID=?, LID=?"
+    query_params = (uid, lid)
+    m_response = better_config.db_pull_list(m_query, query_params)
+    b_resonse = better_config.db_pull_list(b_query, query_params)
     return "{} \n{}".format(m_response, b_resonse)
 
 
@@ -78,36 +75,41 @@ def submitbets():
     if "bets" in bets_json:
         u_winner = bets_json['bets']['winner']
         u_goaler = bets_json['bets']['goaler']
-        query_bets = """IF EXISTS (SELECT u_winner FROM dbo.b_betlog WHERE (UID='{}' AND LID='{}'))
-                              UPDATE b_betlog
-                              SET log_time,b_winner_TID='{}',b_goaler_PID='{}'
-                              WHERE (UID='{}' AND LID='{}')
-                        ELSE
-                              INSERT INTO b_betlog (UID,LID,log_time,u_winner,u_goaler)
-                              VALUES ('{}','{}','{}','{}','{}')""".format(uid, lid, datetime.datetime.now(), u_winner, u_goaler, uid, lid,
-                                                                          uid, lid, datetime.datetime.now(), u_winner, u_goaler)
-        better_config.db_put(query_bets)
+        query_bets = "IF EXISTS (SELECT u_winner FROM dbo.b_betlog WHERE (UID=? AND LID=?)) UPDATE b_betlog SET log_time,b_winner_TID=?," \
+                     "b_goaler_PID=? WHERE (UID=? AND LID=?) ELSE INSERT INTO b_betlog (UID,LID,log_time,u_winner,u_goaler) VALUES (?,?,?,?,?)"
+        querybets_params = (uid, lid, datetime.datetime.now(), u_winner, u_goaler, uid, lid, uid, lid, datetime.datetime.now(), u_winner, u_goaler)
+        better_config.db_put(query_bets, querybets_params)
     if "matches" in bets_json:
         for match in bets_json['matches']:
             params = bets_update(match)
-            query_matches = """IF EXISTS (SELECT * FROM dbo.m_betlog WHERE (UID='{}' AND LID='{}' AND MID='{}'))
-                                    UPDATE m_betlog
-                                    SET log_time='{}',b_hscore='{}',b_ascore='{}',b_outcome='{}',b_winner='{}'
-                                    WHERE (UID='{}' AND LID='{}' AND MID='{}')
-                               ELSE
-                                   INSERT INTO m_betlog (UID,LID,MID,log_time,b_hscore,b_ascore,b_outcome,b_winner)
-                                   VALUES ('{}','{}','{}','{}','{}','{}','{}','{}')""".format(uid, lid, params.mid,datetime.datetime.now(),
-                                                                                              params.home, params.away, params.outcome, params.winner,
-                                                                                              uid, lid, params.mid, uid, lid, params.mid,
-                                                                                              datetime.datetime.now(), params.home, params.away,
-                                                                                              params.outcome, params.winner)
-            better_config.db_put(query_matches)
+            query_matches = "IF EXISTS (SELECT * FROM dbo.m_betlog WHERE (UID=? AND LID=? AND MID=?)) UPDATE m_betlog SET log_time=?,b_hscore=?," \
+                            "b_ascore=?,b_outcome=?,b_winner=? WHERE (UID=? AND LID=? AND MID=?) ELSE INSERT INTO m_betlog (UID,LID,MID,log_time," \
+                            "b_hscore,b_ascore,b_outcome,b_winner) VALUES (?,?,?,?,?,?,?,?)"
+            querymatch_params = (uid, lid, params.mid, datetime.datetime.now(), params.home, params.away, params.outcome, params.winner, uid, lid,
+                                 params.mid, uid, lid, params.mid, datetime.datetime.now(), params.home, params.away, params.outcome, params.winner)
+            better_config.db_put(query_matches, querymatch_params)
     return "Success"
+
+
+@app.route('/king', methods=['GET'])
+def administrator():
+    run_scorers = request.args['scorers']
+    run_teams = request.args['teams']
+    run_matches = request.args['matches']
+    run_players = request.args['players']
+    if run_scorers:
+        dbSyncer.sync_scorers()
+    if run_teams:
+        dbSyncer.sync_teams()
+    if run_matches:
+        dbSyncer.sync_matches()
+    if run_players:
+        dbSyncer.sync_players()
 
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-    #dbSyncer.sync_matches()
+    # dbSyncer.sync_matches()
     # db_syncer.sync_mastches()
     # while True:
     #     # if x time passed since last timestamp, else pass

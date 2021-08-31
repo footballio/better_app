@@ -95,12 +95,16 @@ def sync_matches():
     for key in matches_json['response']:
         params = match_update(key)
         if params.m_winner is None:
-            query = "IF EXISTS (SELECT * FROM dbo.matches WHERE MID = ?) UPDATE matches SET m_round=?,m_status=?,m_time=?,m_hscore=?,m_ascore=?,m_outcome=? WHERE MID = ? ELSE INSERT INTO matches (MID,m_round,m_status,m_time,m_home_TID,m_away_TID,m_hscore,m_ascore,m_outcome) VALUES (?,?,?,?,?,?,?,?,?)"
+            query = "IF EXISTS (SELECT * FROM dbo.matches WHERE MID = ?) UPDATE matches SET m_round=?,m_status=?,m_time=?,m_hscore=?,m_ascore=?," \
+                    "m_outcome=? WHERE MID = ? ELSE INSERT INTO matches (MID,m_round,m_status,m_time,m_home_TID,m_away_TID,m_hscore,m_ascore," \
+                    "m_outcome) VALUES (?,?,?,?,?,?,?,?,?)"
             query_params = (params.m_id, params.m_round, params.m_status, params.m_time, params.m_hscore, params.m_ascore, params.m_outcome,
                             params.m_id, params.m_id, params.m_round, params.m_status, params.m_time, params.m_home_TID, params.m_away_TID,
                             params.m_hscore, params.m_ascore, params.m_outcome)
         else:
-            query = "IF EXISTS (SELECT * FROM dbo.matches WHERE MID =?) UPDATE matches SET m_round=?,m_status=?,m_time=?,m_hscore=?,m_ascore=?,m_outcome=?,m_winner=? WHERE MID = ? ELSE INSERT INTO matches (MID,m_round,m_status,m_time,m_home_TID,m_away_TID,m_hscore,m_ascore,m_outcome,m_winner) VALUES (?,?,?,?,?,?,?,?,?,?)"
+            query = "IF EXISTS (SELECT * FROM dbo.matches WHERE MID =?) UPDATE matches SET m_round=?,m_status=?,m_time=?,m_hscore=?,m_ascore=?" \
+                    ",m_outcome=?,m_winner=? WHERE MID = ? ELSE INSERT INTO matches (MID,m_round,m_status,m_time,m_home_TID,m_away_TID,m_hscore," \
+                    "m_ascore,m_outcome,m_winner) VALUES (?,?,?,?,?,?,?,?,?,?)"
             query_params = (params.m_id, params.m_round, params.m_status, params.m_time, params.m_hscore, params.m_ascore, params.m_outcome,
                             params.m_winner, params.m_id, params.m_id, params.m_round, params.m_status, params.m_time, params.m_home_TID,
                             params.m_away_TID, params.m_hscore, params.m_ascore, params.m_outcome, params.m_winner)
@@ -116,10 +120,12 @@ def sync_teams():
     for group in standings_json:
         for rank in group:
             params = teams_update(rank)
-            query = "IF EXISTS (SELECT * FROM dbo.teams WHERE TID=?) UPDATE teams SET t_rank=?,t_points=?,t_played=?,t_wins=?,t_draws=?,t_loses=?,t_goals_diff=? WHERE TID = ? ELSE INSERT INTO teams (TID,t_name,t_image,group_id,t_rank,t_points,t_played,t_wins,t_draws,t_loses,t_goals_diff) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
-            query_params = (params.t_id, params.t_rank, params.t_points, params.t_played, params.t_wins, params.t_draws, params.t_loses, params.t_gd, params.t_id,
-                            params.t_id, params.t_name, params.t_image, params.group_id[-1], params.t_rank, params.t_points, params.t_played, params.t_wins,
-                            params.t_draws, params.t_loses, params.t_gd)
+            query = "IF EXISTS (SELECT * FROM dbo.teams WHERE TID=?) UPDATE teams SET t_rank=?,t_points=?,t_played=?,t_wins=?,t_draws=?,t_loses=?," \
+                    "t_goals_diff=? WHERE TID = ? ELSE INSERT INTO teams (TID,t_name,t_image,group_id,t_rank,t_points,t_played,t_wins,t_draws," \
+                    "t_loses,t_goals_diff) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+            query_params = (params.t_id, params.t_rank, params.t_points, params.t_played, params.t_wins, params.t_draws, params.t_loses, params.t_gd,
+                            params.t_id, params.t_id, params.t_name, params.t_image, params.group_id[-1], params.t_rank, params.t_points,
+                            params.t_played, params.t_wins, params.t_draws, params.t_loses, params.t_gd)
             better_config.db_put(query, query_params)
 
 
@@ -134,7 +140,8 @@ def sync_players():
     while page <= total_pages:
         for key in players_json['response']:
             params = players_update(key)
-            query = "IF EXISTS (SELECT * FROM dbo.players WHERE PID = ?) UPDATE players SET p_goals=? WHERE PID = ? ELSE INSERT INTO players (PID,p_name,TID,p_goals,p_image) VALUES (?,?,?,?,?)"
+            query = "IF EXISTS (SELECT * FROM dbo.players WHERE PID = ?) UPDATE players SET p_goals=? WHERE PID = ? ELSE INSERT INTO players (PID," \
+                    "p_name,TID,p_goals,p_image) VALUES (?,?,?,?,?)"
             query_params = (params.p_id, params.p_goals, params.p_id, params.p_id, params.p_name, params.p_team, params.p_goals, params.p_image)
             better_config.db_put(query, query_params)
         page += 1
@@ -151,7 +158,8 @@ def sync_scorers():
     players_json = json.loads(response)
     for key in players_json['response']:
         params = players_update(key)
-        query = "IF EXISTS (SELECT * FROM dbo.players WHERE PID = ?) UPDATE players SET p_goals=? WHERE PID = ? ELSE INSERT INTO players (PID,p_name,TID,p_goals,p_image) VALUES (?,?,?,?,?)"
+        query = "IF EXISTS (SELECT * FROM dbo.players WHERE PID = ?) UPDATE players SET p_goals=? WHERE PID = ? ELSE INSERT INTO players (PID," \
+                "p_name,TID,p_goals,p_image) VALUES (?,?,?,?,?)"
         query_params = (params.p_id, params.p_goals, params.p_id, params.p_id, params.p_name, params.p_team, params.p_goals, params.p_image)
         better_config.db_put(query, query_params)
 
