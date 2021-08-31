@@ -28,7 +28,7 @@ class match_update:
         self.m_homewin = key['teams']['home']['winner']
         self.m_awaywin = key['teams']['away']['winner']
         if self.m_hscore == self.m_ascore:
-            if self.m_hscore == None:
+            if self.m_hscore is None:
                 self.m_outcome = None
             else:
                 self.m_outcome = 3
@@ -38,9 +38,9 @@ class match_update:
             self.m_outcome = 2
         else:
             pass
-        if  self.m_homewin == True:
+        if self.m_homewin is True:
             self.m_winner = 1
-        elif  self.m_awaywin == True:
+        elif self.m_awaywin is True:
             self.m_winner = 2
         else:
             pass
@@ -80,11 +80,10 @@ class players_update:
         self.p_image = None
         self.p_goals = 0
         self.p_id = key['player']['id']
-        self.p_name = key['player']['name'].replace("'","")
+        self.p_name = key['player']['name'].replace("'", "")
         self.p_team = key['statistics'][0]['team']['id']
         self.p_image = key['player']['photo']
         self.p_goals = better_config.intcheck(key['statistics'][0]['goals']['total'])
-
 
 
 def sync_matches():
@@ -118,7 +117,7 @@ def sync_teams():
         for rank in group:
             params = teams_update(rank)
             query = "IF EXISTS (SELECT * FROM dbo.teams WHERE TID=?) UPDATE teams SET t_rank=?,t_points=?,t_played=?,t_wins=?,t_draws=?,t_loses=?,t_goals_diff=? WHERE TID = ? ELSE INSERT INTO teams (TID,t_name,t_image,group_id,t_rank,t_points,t_played,t_wins,t_draws,t_loses,t_goals_diff) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
-            query_params = (params.t_id, params.t_rank, params.t_points,params.t_played, params.t_wins, params.t_draws, params.t_loses, params.t_gd, params.t_id,
+            query_params = (params.t_id, params.t_rank, params.t_points, params.t_played, params.t_wins, params.t_draws, params.t_loses, params.t_gd, params.t_id,
                             params.t_id, params.t_name, params.t_image, params.group_id[-1], params.t_rank, params.t_points, params.t_played, params.t_wins,
                             params.t_draws, params.t_loses, params.t_gd)
             better_config.db_put(query, query_params)
@@ -142,7 +141,8 @@ def sync_players():
         querystring = {"season": better_config.season_params.seasonId, "league": better_config.season_params.leagueId, "page": page}
         response = requests.request("GET", url, headers=better_config.headers, params=querystring).text
         players_json = json.loads(response)
-        print (page)
+        print(page)
+
 
 def sync_scorers():
     url = "https://api-football-beta.p.rapidapi.com/players/topscorers"
