@@ -97,10 +97,10 @@ def submitbets():
                                ELSE
                                    INSERT INTO m_betlog (UID,LID,MID,log_time,b_hscore,b_ascore,b_outcome,b_winner)
                                    VALUES ('{}','{}','{}','{}','{}','{}','{}','{}')""".format(uid, lid, params.mid,datetime.datetime.now(),
-                                                                                                   params.home, params.away, params.outcome,
-                                                                                                   params.winner, uid, lid, params.mid, uid, lid,
-                                                                                                   params.mid, datetime.datetime.now(), params.home,
-                                                                                                   params.away, params.outcome, params.winner)
+                                                                                              params.home, params.away, params.outcome, params.winner,
+                                                                                              uid, lid, params.mid, uid, lid, params.mid,
+                                                                                              datetime.datetime.now(), params.home, params.away,
+                                                                                              params.outcome, params.winner)
             better_config.db_put(query_matches)
     return "Success"
 
