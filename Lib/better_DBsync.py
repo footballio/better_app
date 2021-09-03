@@ -162,26 +162,3 @@ def sync_scorers():
                 "p_name,TID,p_goals,p_image) VALUES (?,?,?,?,?)"
         query_params = (params.p_id, params.p_goals, params.p_id, params.p_id, params.p_name, params.p_team, params.p_goals, params.p_image)
         better_config.db_put(query, query_params)
-
-class u_points:
-    def __init__(self, UID, LID, table):
-        self.exists =  better_config.db_pull_val("SELECT COUNT(1) FROM ? WHERE UID=? AND LID=?", (table, UID, LID))
-        if self.exists == 1:
-            self.toto_gs = better_config.db_pull_val("SELECT SUM(toto_count) FROM m_calculation WHERE UID=? AND LID=?", (UID, LID))
-            self.perfect_gs = better_config.db_pull_val("SELECT SUM(perf_count) FROM m_calculation WHERE UID=? AND LID=?", (UID, LID))
-            self.toto_ko = better_config.db_pull_val("SELECT SUM(toto_count) FROM m_calculation WHERE UID=? AND LID=?", (UID, LID))
-            self.perfect_ko = better_config.db_pull_val("SELECT SUM(toto_count) FROM m_calculation WHERE UID=? AND LID=?", (UID, LID))
-            self.goals_gs = better_config.db_pull_val("SELECT SUM(toto_count) FROM m_calculation WHERE UID=? AND LID=?", (UID, LID))
-            self.goals_ko = better_config.db_pull_val("SELECT SUM(toto_count) FROM m_calculation WHERE UID=? AND LID=?", (UID, LID))
-            self.winner_org = better_config.db_pull_val("SELECT SUM(toto_count) FROM m_calculation WHERE UID=? AND LID=?", (UID, LID))
-            self.winner = 0
-            self.count_toto = self.toto_gs + self.toto_ko
-            self.count_perfect = self.perfect_gs + self.perfect_ko
-            self.m_points = (self.toto_gs * better_config.rules.toto_gs) + (self.perfect_gs * better_config.rules.perfect_gs)\
-                            + (self.toto_ko * better_config.rules.toto_ko) + (self.perfect_ko * better_config.rules.perfect_ko)
-            self.b_points = (self.winner * better_config.rules.winner_org) + (self.goals_gs * better_config.rules.goal_gs)\
-                            + (self.goals_ko * better_config.rules.goal_ko)
-            self.t_points = self.m_points + self.b_points
-
-def process_league(leagueId):
-    league_table = ("league_"+str(leagueId))
