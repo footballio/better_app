@@ -119,8 +119,8 @@ def submitbets():
     if "matches" in bets_json:
         for match in bets_json['matches']:
             params = bets_update(match)
-            query_matches = "IF EXISTS (SELECT * FROM dbo.betlog WHERE (UID=? AND LID=? AND MID=?)) UPDATE betlog SET log_time=?,b_hscore=?," \
-                            "b_ascore=?,b_outcome=?,b_winner=? WHERE (UID=? AND LID=? AND MID=?) ELSE INSERT INTO betlog (UID,LID,MID,log_time," \
+            query_matches = "IF EXISTS (SELECT * FROM dbo.betlog WHERE (UID=? AND LID=? AND MID=?)) UPDATE dbo.betlog SET log_time=?,b_hscore=?," \
+                            "b_ascore=?,b_outcome=?,b_winner=? WHERE (UID=? AND LID=? AND MID=?) ELSE INSERT INTO dbo.betlog (UID,LID,MID,log_time," \
                             "b_hscore,b_ascore,b_outcome,b_winner) VALUES (?,?,?,?,?,?,?,?)"
             querymatch_params = (uid, lid, params.mid, datetime.datetime.now(), params.home, params.away, params.outcome, params.winner, uid, lid,
                                  params.mid, uid, lid, params.mid, datetime.datetime.now(), params.home, params.away, params.outcome, params.winner)
@@ -146,6 +146,42 @@ def matches_result():
         r["m_ascore"] = row[7]
         r["m_outcome"] = row[8]
         r["m_winner"] = row[9]
+        table.append(r)
+    response = json.dumps(table)
+    return "{}".format(response)
+
+
+@app.route('/players', methods=['GET'])
+def players():
+    table = []
+    query = "SELECT * FROM dbo.players"
+    query_params = ()
+    rows = better_config.db_pull_list(query, query_params)
+    for row in rows:
+        r = collections.OrderedDict()
+        r["PID"] = row[0]
+        r["p_name"] = row[1]
+        r["TID"] = row[2]
+        r["p_goals"] = row[3]
+        r["p_image"] = row[4]
+        table.append(r)
+    response = json.dumps(table)
+    return "{}".format(response)
+
+
+@app.route('/players/scorers', methods=['GET'])
+def scorers():
+    table = []
+    query = "SELECT * FROM dbo.players WHERE p_goals > 0 ORDER BY p_goals DESC"
+    query_params = ()
+    rows = better_config.db_pull_list(query, query_params)
+    for row in rows:
+        r = collections.OrderedDict()
+        r["PID"] = row[0]
+        r["p_name"] = row[1]
+        r["TID"] = row[2]
+        r["p_goals"] = row[3]
+        r["p_image"] = row[4]
         table.append(r)
     response = json.dumps(table)
     return "{}".format(response)
