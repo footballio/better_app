@@ -56,16 +56,16 @@ def form_login():
             return 'Wrong username / password'
 
 
-@app.route('leagues/leagueCreate', methods=['GET'])
+@app.route('/leagues/leagueCreate', methods=['POST'])
 def league_create():
     uid = request.args['UID']
-    leaguename = request.args['league_name']
+    league_name = request.args['league_name']
     pay_url = request.args['pay_url']
-    query = "INSERT INTO dbo.leagues (league, admin_uid) VALUES (?,?)"
-    query_params = (leaguename, uid)
+    query = "INSERT INTO dbo.leagues (leaguename, admin_uid) VALUES (?,?)"
+    query_params = (league_name, uid)
     better_config.db_put(query, query_params)
     leagueID = better_config.db_pull_val("SELECT LID FROM dbo.leagues WHERE LID = (SELECT MAX(LID) FROM dbo.leagues WHERE admin_uid=?)", uid)
-    better_config.db_put("INSERT INTO dbo.leagues (UID, LID) VALUES (?,?)", (uid, leagueID))
+    better_config.db_put("INSERT INTO dbo.league_users (UID, LID) VALUES (?,?)", (uid, leagueID))
     if pay_url:
         query_pay = "UPDATE dbo.leagues SET pay_url=? WHERE (LID=?)"
         params_pay = (pay_url, leagueID)
@@ -73,7 +73,7 @@ def league_create():
     return leagueID
 
 
-@app.route('leagues/leagueJoin', methods=['GET'])
+@app.route('/leagues/leagueJoin', methods=['GET'])
 def league_join():
     uid = request.args['UID']
     lid = request.args['LID']
@@ -88,7 +88,7 @@ def league_join():
         return "Success"
 
 
-@app.route('leagues/pullLeagueBets', methods=['GET'])
+@app.route('/leagues/pullLeagueBets', methods=['GET'])
 def pullbets_lid():
     table = []
     lid = request.args['LID']
@@ -112,7 +112,7 @@ def pullbets_lid():
     return response
 
 
-@app.route('users/pullUserBets', methods=['GET'])
+@app.route('/users/pullUserBets', methods=['GET'])
 def pullbets_uid():
     table = []
     uid = request.args['UID']
@@ -138,7 +138,7 @@ def pullbets_uid():
     return response
 
 
-@app.route('users/submit-bet', methods=['POST'])
+@app.route('/users/submit-bet', methods=['POST'])
 def submitbets():
     bets_json = request.get_json()
     uid = bets_json['parameters']['UID']
