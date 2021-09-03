@@ -75,8 +75,9 @@ def submitbets():
     if "bets" in bets_json:
         u_winner = bets_json['bets']['winner']
         u_goaler = bets_json['bets']['goaler']
-        query_bets = "IF EXISTS (SELECT u_winner FROM dbo.b_betlog WHERE (UID=? AND LID=?)) UPDATE b_betlog SET log_time,b_winner_TID=?," \
-                     "b_goaler_PID=? WHERE (UID=? AND LID=?) ELSE INSERT INTO b_betlog (UID,LID,log_time,u_winner,u_goaler) VALUES (?,?,?,?,?)"
+        query_bets = "IF EXISTS (SELECT b_winner_TID FROM dbo.b_betlog WHERE (UID=? AND LID=?)) UPDATE b_betlog SET log_time,b_winner_TID=?," \
+                     "b_goaler_PID=? WHERE (UID=? AND LID=?) ELSE INSERT INTO b_betlog (UID,LID,log_time,b_winner_TID,b_goaler_PID) " \
+                     "VALUES (?,?,?,?,?)"
         querybets_params = (uid, lid, datetime.datetime.now(), u_winner, u_goaler, uid, lid, uid, lid, datetime.datetime.now(), u_winner, u_goaler)
         better_config.db_put(query_bets, querybets_params)
     if "matches" in bets_json:
@@ -91,21 +92,41 @@ def submitbets():
     return "Success"
 
 
-@app.route('/king', methods=['GET'])
-def administrator():
+@app.route('/king_runner', methods=['GET'])
+def runner():
     run_scorers = request.args['scorers']
     run_teams = request.args['teams']
     run_matches = request.args['matches']
     run_players = request.args['players']
     if run_scorers:
         dbSyncer.sync_scorers()
+    else:
+        pass
     if run_teams:
         dbSyncer.sync_teams()
+
+    else:
+        pass
     if run_matches:
         dbSyncer.sync_matches()
+    else:
+        pass
     if run_players:
         dbSyncer.sync_players()
+    else:
+        pass
 
+
+@app.route('/king_setting/pay', methods=['GET'])
+def user_payment():
+    uid = request.args['uid']
+    lid = request.args['lid']
+    table = "league_" + str(lid)
+    query = "IF EXISTS (SELECT * FROM ? WHERE (UID=? AND LID=?)) UPDATE b_betlog SET u_paid=? WHERE (UID=? AND LID=?)" \
+            "ELSE INSERT INTO b_betlog (UID,LID,u_paid) VALUES (?,?,?)"
+    query_params = (table, uid, lid, 1, uid, lid, uid, lid, 1)
+    better_config.db_put(query, query_params)
+    return "Success"
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
