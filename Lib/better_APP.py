@@ -38,7 +38,7 @@ def form_register():
     better_config.db_put(query_put, query_params)
     query_userid = "SELECT UID from dbo.users WHERE u_mail=?"
     user_id = better_config.db_pull_val(query_userid, newusermail)
-    return 'userID = {}'.format(user_id)
+    return user_id
 
 
 @app.route('/form-login', methods=['POST'])
@@ -51,17 +51,74 @@ def form_login():
         if identity == password:
             query_userid = "SELECT UID from dbo.users WHERE u_mail=?"
             user_id = better_config.db_pull_val(query_userid, mail)
-            return 'userID = {}'.format(user_id)
+            return user_id
         else:
             return 'Wrong username / password'
 
 
-@app.route('/pullUserBets', methods=['GET'])
+@app.route('leagues/leagueCreate', methods=['GET'])
+def league_create():
+    uid = request.args['UID']
+    leaguename = request.args['league_name']
+    pay_url = request.args['pay_url']
+    query = "INSERT INTO dbo.leagues (league, admin_uid) VALUES (?,?)"
+    query_params = (leaguename, uid)
+    better_config.db_put(query, query_params)
+    leagueID = better_config.db_pull_val("SELECT LID FROM dbo.leagues WHERE LID = (SELECT MAX(LID) FROM dbo.leagues WHERE admin_uid=?)", uid)
+    better_config.db_put("INSERT INTO dbo.leagues (UID, LID) VALUES (?,?)", (uid, leagueID))
+    if pay_url:
+        query_pay = "UPDATE dbo.leagues SET pay_url=? WHERE (LID=?)"
+        params_pay = (pay_url, leagueID)
+        better_config.db_put(query_pay, params_pay)
+    return leagueID
+
+
+@app.route('leagues/leagueJoin', methods=['GET'])
+def league_join():
+    uid = request.args['UID']
+    lid = request.args['LID']
+    check = "SELECT COUNT(1) FROM dbo.leagues WHERE LID=?"
+    lid_check = better_config.db_pull_val(check, lid)
+    if lid_check == 0:
+        return "Error: couldn't find league'"
+    else:
+        query = "INSERT INTO dbo.leagues (UID, LID) VALUES (?,?)"
+        query_params = (uid, lid)
+        better_config.db_put(query, query_params)
+        return "Success"
+
+
+@app.route('leagues/pullLeagueBets', methods=['GET'])
+def pullbets_lid():
+    table = []
+    lid = request.args['LID']
+    query = "SELECT UID, m_round, m_status, m_hteam, m_ateam, m_hscore, m_ascore, m_outcome, m_winner, goaler_PID, winner_TID FROM dbo.betlog " \
+            "WHERE LID=?"
+    rows = better_config.db_pull_list(query, lid)
+    for row in rows:
+        r = collections.OrderedDict()
+        r["Match"] = row[0]
+        r["m_round"] = row[1]
+        r["m_status"] = row[2]
+        r["m_time"] = row[3]
+        r["m_hscore"] = row[4]
+        r["m_ascore"] = row[5]
+        r["m_outcome"] = row[6]
+        r["m_winner"] = row[7]
+        r["goaler"] = row[8]
+        r["WINNER"] = row[9]
+        table.append(r)
+    response = json.dumps(table)
+    return response
+
+
+@app.route('users/pullUserBets', methods=['GET'])
 def pullbets_uid():
     table = []
     uid = request.args['UID']
     lid = request.args['LID']
-    query = "SELECT UID, m_round, m_status, m_hteam, m_ateam, m_hscore, m_ascore, m_outcome, m_winner, goaler_PID, winner_TID FROM dbo.betlog WHERE UID=?, LID=?"
+    query = "SELECT UID, m_round, m_status, m_hteam, m_ateam, m_hscore, m_ascore, m_outcome, m_winner, goaler_PID, winner_TID FROM dbo.betlog " \
+            "WHERE UID=?, LID=?"
     query_params = (uid, lid)
     rows = better_config.db_pull_list(query, query_params)
     for row in rows:
@@ -78,32 +135,10 @@ def pullbets_uid():
         r["WINNER"] = row[9]
         table.append(r)
     response = json.dumps(table)
-    return "{}".format(response)
+    return response
 
-@app.route('/pullLeagueBets', methods=['GET'])
-def pullbets_lid():
-    table = []
-    lid = request.args['LID']
-    query = "SELECT UID, m_round, m_status, m_hteam, m_ateam, m_hscore, m_ascore, m_outcome, m_winner, goaler_PID, winner_TID FROM dbo.betlog WHERE LID=?"
-    query_params = (lid)
-    rows = better_config.db_pull_list(query, query_params)
-    for row in rows:
-        r = collections.OrderedDict()
-        r["Match"] = row[0]
-        r["m_round"] = row[1]
-        r["m_status"] = row[2]
-        r["m_time"] = row[3]
-        r["m_hscore"] = row[4]
-        r["m_ascore"] = row[5]
-        r["m_outcome"] = row[6]
-        r["m_winner"] = row[7]
-        r["goaler"] = row[8]
-        r["WINNER"] = row[9]
-        table.append(r)
-    response = json.dumps(table)
-    return "{}".format(response)
 
-@app.route('/submit-bet', methods=['POST'])
+@app.route('users/submit-bet', methods=['POST'])
 def submitbets():
     bets_json = request.get_json()
     uid = bets_json['parameters']['UID']
@@ -148,7 +183,7 @@ def matches_result():
         r["m_winner"] = row[9]
         table.append(r)
     response = json.dumps(table)
-    return "{}".format(response)
+    return response
 
 
 @app.route('/players', methods=['GET'])
@@ -166,7 +201,7 @@ def players():
         r["p_image"] = row[4]
         table.append(r)
     response = json.dumps(table)
-    return "{}".format(response)
+    return response
 
 
 @app.route('/players/scorers', methods=['GET'])
@@ -184,44 +219,50 @@ def scorers():
         r["p_image"] = row[4]
         table.append(r)
     response = json.dumps(table)
-    return "{}".format(response)
+    return response
 
 
 @app.route('/king_runner', methods=['GET'])
 def runner():
+    table = []
     run_scorers = request.args['scorers']
     run_teams = request.args['teams']
     run_matches = request.args['matches']
     run_players = request.args['players']
     if run_scorers:
         dbSyncer.sync_scorers()
+        table.append("scorers synced")
     else:
         pass
     if run_teams:
         dbSyncer.sync_teams()
-
+        table.append("teams synced")
     else:
         pass
     if run_matches:
         dbSyncer.sync_matches()
+        table.append("matches synced")
     else:
         pass
     if run_players:
         dbSyncer.sync_players()
+        table.append("players synced")
     else:
         pass
+    response = json.dumps(table)
+    return response
 
 
 @app.route('/king_setting/pay', methods=['GET'])
 def user_payment():
     uid = request.args['uid']
     lid = request.args['lid']
-    table = "league_users"
     query = "IF EXISTS (SELECT * FROM dbo.league_users WHERE (UID=? AND LID=?)) UPDATE dbo.league_users SET u_paid=? WHERE (UID=? AND LID=?)" \
             "ELSE INSERT INTO dbo.league_users (UID,LID,payment) VALUES (?,?,?)"
-    query_params = (table, uid, lid, 1, uid, lid, uid, lid, 1)
+    query_params = (uid, lid, 1, uid, lid, uid, lid, 1)
     better_config.db_put(query, query_params)
     return "Success"
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
